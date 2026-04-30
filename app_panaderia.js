@@ -1,8 +1,8 @@
 /**
  * ========================================
- * APP PANADERÍA STOCK - Lógica Principal
+ * APP PANADERÍA INGREDIENTES - Lógica Principal
  * ========================================
- * Sistema de gestión de stock para panadería
+ * Sistema de gestión de stock de ingredientes para panadería
  * Sin frameworks - JavaScript puro
  */
 
@@ -22,10 +22,10 @@ const DEFAULT_SETTINGS = {
 };
 
 const CATEGORIES = {
-    panes: 'Panes',
-    facturas: 'Facturas',
-    galletas: 'Galletas',
-    tortas: 'Tortas',
+    harinas: 'Harinas',
+    azucares: 'Azúcares',
+    levaduras: 'Levaduras',
+    grasas: 'Grasas',
     otros: 'Otros'
 };
 
@@ -48,7 +48,7 @@ let state = {
 // ========================================
 
 /**
- * Genera un ID único para productos
+ * Genera un ID único para ingredientes
  */
 function generateId() {
     return Date.now().toString(36) + Math.random().toString(36).substr(2);
@@ -127,13 +127,13 @@ function loadData() {
 }
 
 /**
- * Guarda productos en localStorage
+ * Guarda ingredientes en localStorage
  */
 function saveProducts() {
     try {
         localStorage.setItem(STORAGE_KEYS.PRODUCTS, JSON.stringify(state.products));
     } catch (error) {
-        console.error('Error al guardar productos:', error);
+        console.error('Error al guardar ingredientes:', error);
         showToast('Error al guardar los datos', 'error');
     }
 }
@@ -161,11 +161,11 @@ function saveSettings() {
 }
 
 // ========================================
-// GESTIÓN DE PRODUCTOS
+// GESTIÓN DE INGREDIENTES
 // ========================================
 
 /**
- * Agrega un nuevo producto
+ * Agrega un nuevo ingrediente
  */
 function addProduct(productData) {
     const product = {
@@ -174,6 +174,7 @@ function addProduct(productData) {
         category: productData.category,
         quantity: parseFloat(productData.quantity) || 0,
         unit: productData.unit,
+        minimumStock: parseFloat(productData.minimumStock) || 5,
         createdAt: Date.now(),
         updatedAt: Date.now()
     };
@@ -181,11 +182,11 @@ function addProduct(productData) {
     state.products.push(product);
     saveProducts();
     renderProducts();
-    showToast(`Producto "${product.name}" agregado correctamente`);
+    showToast(`Ingrediente "${product.name}" agregado correctamente`);
 }
 
 /**
- * Actualiza un producto existente
+ * Actualiza un ingrediente existente
  */
 function updateProduct(id, productData) {
     const index = state.products.findIndex(p => p.id === id);
@@ -197,17 +198,18 @@ function updateProduct(id, productData) {
         category: productData.category,
         quantity: parseFloat(productData.quantity) || 0,
         unit: productData.unit,
+        minimumStock: parseFloat(productData.minimumStock) || 5,
         updatedAt: Date.now()
     };
     
     saveProducts();
     renderProducts();
-    showToast('Producto actualizado correctamente');
+    showToast('Ingrediente actualizado correctamente');
     return true;
 }
 
 /**
- * Elimina un producto
+ * Elimina un ingrediente
  */
 function deleteProduct(id) {
     const product = state.products.find(p => p.id === id);
@@ -217,19 +219,26 @@ function deleteProduct(id) {
         state.products = state.products.filter(p => p.id !== id);
         saveProducts();
         renderProducts();
-        showToast('Producto eliminado');
+        showToast('Ingrediente eliminado');
     }
 }
 
 /**
- * Obtiene el estado del stock de un producto
+ * Obtiene el estado del stock de un ingrediente basado en su stock mínimo
+ * OK: stock > minimumStock
+ * Bajo: stock está cerca del mínimo (entre 80% y 100% del mínimo)
+ * Crítico: stock < 80% del mínimo o stock = 0
  */
-function getStockStatus(quantity) {
+function getStockStatus(quantity, minimumStock) {
     if (quantity <= 0) {
-        return { status: 'out', label: 'Sin stock' };
-    } else if (quantity <= state.settings.thresholdCritical) {
-        return { status: 'out', label: 'Sin stock' };
-    } else if (quantity <= state.settings.thresholdLow) {
+        return { status: 'out', label: 'Crítico' };
+    }
+    
+    const lowThreshold = minimumStock * 0.8;
+    
+    if (quantity < lowThreshold) {
+        return { status: 'out', label: 'Crítico' };
+    } else if (quantity <= minimumStock) {
         return { status: 'low', label: 'Stock bajo' };
     } else {
         return { status: 'ok', label: 'Stock OK' };
@@ -303,13 +312,13 @@ function clearHistory() {
 // ========================================
 
 /**
- * Renderiza la lista de productos
+ * Renderiza la lista de ingredientes
  */
 function renderProducts() {
     const container = document.getElementById('products-list');
     const emptyState = document.getElementById('empty-state');
     
-    // Filtrar productos
+    // Filtrar ingredientes
     let filteredProducts = state.products;
     
     // Aplicar filtro de búsqueda
@@ -327,7 +336,7 @@ function renderProducts() {
         );
     }
     
-    // Mostrar estado vacío si no hay productos
+    // Mostrar estado vacío si no hay ingredientes
     if (state.products.length === 0) {
         container.innerHTML = '';
         emptyState.classList.remove('hidden');
@@ -336,14 +345,14 @@ function renderProducts() {
     
     emptyState.classList.add('hidden');
     
-    // Renderizar cada producto
+    // Renderizar cada ingrediente
     if (filteredProducts.length === 0) {
-        container.innerHTML = '<p style="text-align:center;color:var(--color-text-light);padding:20px;">No se encontraron productos</p>';
+        container.innerHTML = '<p style="text-align:center;color:var(--color-text-light);padding:20px;">No se encontraron ingredientes</p>';
         return;
     }
     
     container.innerHTML = filteredProducts.map(product => {
-        const stockStatus = getStockStatus(product.quantity);
+        const stockStatus = getStockStatus(product.quantity, product.minimumStock);
         const categoryLabel = CATEGORIES[product.category] || product.category;
         
         return `
@@ -431,7 +440,7 @@ function escapeHtml(text) {
 // ========================================
 
 /**
- * Abre el modal para agregar/editar producto
+ * Abre el modal para agregar/editar ingrediente
  */
 function openProductModal(product = null) {
     const modal = document.getElementById('modal-product');
@@ -444,15 +453,17 @@ function openProductModal(product = null) {
     
     if (product) {
         // Modo edición
-        title.textContent = 'Editar Producto';
+        title.textContent = 'Editar Ingrediente';
         document.getElementById('product-id').value = product.id;
         document.getElementById('product-name').value = product.name;
         document.getElementById('product-category').value = product.category;
         document.getElementById('product-quantity').value = product.quantity;
         document.getElementById('product-unit').value = product.unit;
+        document.getElementById('product-minimum').value = product.minimumStock || 5;
     } else {
         // Modo agregar
-        title.textContent = 'Agregar Producto';
+        title.textContent = 'Agregar Ingrediente';
+        document.getElementById('product-minimum').value = 5;
     }
     
     modal.classList.remove('hidden');
@@ -536,7 +547,7 @@ function initEventListeners() {
         }
     });
     
-    // Formulario de producto
+    // Formulario de ingrediente
     document.getElementById('product-form').addEventListener('submit', (e) => {
         e.preventDefault();
         
@@ -544,7 +555,8 @@ function initEventListeners() {
             name: document.getElementById('product-name').value,
             category: document.getElementById('product-category').value,
             quantity: document.getElementById('product-quantity').value,
-            unit: document.getElementById('product-unit').value
+            unit: document.getElementById('product-unit').value,
+            minimumStock: document.getElementById('product-minimum').value
         };
         
         // Validaciones
@@ -555,6 +567,11 @@ function initEventListeners() {
         
         if (!productData.category) {
             showToast('Selecciona una categoría', 'error');
+            return;
+        }
+
+        if (!productData.minimumStock || productData.minimumStock < 0) {
+            showToast('El stock mínimo debe ser válido', 'error');
             return;
         }
         
@@ -685,32 +702,6 @@ function initEventListeners() {
         e.target.value = ''; // Resetear input
     });
     
-    // Reiniciar todos los datos
-    document.getElementById('btn-reset-all').addEventListener('click', () => {
-        if (confirmAction('¿Estás seguro de eliminar TODOS los datos? Esta acción no se puede deshacer.')) {
-            if (confirmAction('Última confirmación: ¿Eliminar todo el stock y historial?')) {
-                state.products = [];
-                state.movements = [];
-                state.settings = { ...DEFAULT_SETTINGS };
-                
-                saveProducts();
-                saveMovements();
-                saveSettings();
-                
-                renderProducts();
-                renderMovements();
-                
-                // Resetear inputs
-                document.getElementById('threshold-low').value = 10;
-                document.getElementById('threshold-critical').value = 5;
-                document.getElementById('search-input').value = '';
-                document.getElementById('filter-category').value = 'all';
-                document.getElementById('filter-movement-type').value = 'all';
-                
-                showToast('Todos los datos han sido eliminados');
-            }
-        }
-    });
 }
 
 /**
@@ -753,7 +744,7 @@ window.openMovementModal = openMovementModal;
  * Inicializa la aplicación
  */
 function initApp() {
-    console.log('🍞 Panadería Stock - Iniciando...');
+    console.log('🧂 Panadería Ingredientes - Iniciando...');
     
     // Cargar datos
     loadData();

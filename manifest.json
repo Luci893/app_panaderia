@@ -1,7 +1,7 @@
 {
-    "name": "Panadería Stock",
-    "short_name": "Panadería",
-    "description": "App de gestión de stock para panadería",
+    "name": "Panadería Ingredientes",
+    "short_name": "Ingredientes",
+    "description": "App de gestión de stock de ingredientes para panadería",
     "start_url": "./index.html",
     "display": "standalone",
     "background_color": "#FFF8F0",

@@ -1,11 +1,11 @@
 /**
  * ========================================
- * SERVICE WORKER - Panadería Stock
+ * SERVICE WORKER - Panadería Ingredientes
  * ========================================
  * Permite funcionamiento offline básico
  */
 
-const CACHE_NAME = 'panaderia-stock-v1';
+const CACHE_NAME = 'panaderia-ingredientes-v1';
 const ASSETS_TO_CACHE = [
     './',
     './index.html',
