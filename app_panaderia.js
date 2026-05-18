@@ -47,15 +47,15 @@ let state = {
 // FUNCIONES DE UTILIDAD
 // ========================================
 
-/**
- * Genera un ID único para ingredientes
+/*
+ Genera un ID único para ingredientes
  */
 function generateId() {
     return Date.now().toString(36) + Math.random().toString(36).substr(2);
 }
 
-/**
- * Formatea una fecha para mostrar
+/*
+  Formatea una fecha para mostrar
  */
 function formatDate(timestamp) {
     const date = new Date(timestamp);
@@ -69,8 +69,8 @@ function formatDate(timestamp) {
     return date.toLocaleDateString('es-AR', options);
 }
 
-/**
- * Muestra un mensaje toast
+/*
+  Muestra un mensaje toast
  */
 function showToast(message, type = 'success') {
     const container = document.getElementById('toast-container');
@@ -90,22 +90,23 @@ function showToast(message, type = 'success') {
     }, 4000);
 }
 
-/**
- * Solicita confirmación al usuario
+/*
+  Solicita confirmación al usuario
  */
 function confirmAction(message) {
-    return confirm(message);
+    return confirm(message); // Función hecha
 }
 
 // ========================================
 // FUNCIONES DE PERSISTENCIA (localStorage)
 // ========================================
 
-/**
- * Carga datos desde localStorage
+/*
+ Carga datos desde localStorage
  */
 function loadData() {
     try {
+        // 
         const products = localStorage.getItem(STORAGE_KEYS.PRODUCTS);
         const movements = localStorage.getItem(STORAGE_KEYS.MOVEMENTS);
         const settings = localStorage.getItem(STORAGE_KEYS.SETTINGS);
@@ -126,8 +127,8 @@ function loadData() {
     }
 }
 
-/**
- * Guarda ingredientes en localStorage
+/*
+  Guarda ingredientes en localStorage
  */
 function saveProducts() {
     try {
@@ -149,8 +150,8 @@ function saveMovements() {
     }
 }
 
-/**
- * Guarda ajustes en localStorage
+/*
+  Guarda ajustes en localStorage
  */
 function saveSettings() {
     try {
@@ -164,9 +165,7 @@ function saveSettings() {
 // GESTIÓN DE INGREDIENTES
 // ========================================
 
-/**
- * Agrega un nuevo ingrediente
- */
+// Agrega un nuevo ingrediente 
 function addProduct(productData) {
     const product = {
         id: generateId(),
@@ -185,9 +184,7 @@ function addProduct(productData) {
     showToast(`Ingrediente "${product.name}" agregado correctamente`);
 }
 
-/**
- * Actualiza un ingrediente existente
- */
+// Actualiza un ingrediente existente
 function updateProduct(id, productData) {
     const index = state.products.findIndex(p => p.id === id);
     if (index === -1) return false;
@@ -306,12 +303,12 @@ function clearHistory() {
 // RENDERIZADO DE LA INTERFAZ
 // ========================================
 
-/**
- * Renderiza la lista de ingredientes
+/*
+  Renderiza la lista de ingredientes
  */
 function renderProducts() {
-    const container = document.getElementById('products-list');
-    const emptyState = document.getElementById('empty-state');
+    const container = document.getElementById('products-list'); // id contenedor div
+    const emptyState = document.getElementById('empty-state'); 
     
     // Filtrar ingredientes
     let filteredProducts = state.products;
@@ -319,6 +316,7 @@ function renderProducts() {
     // Aplicar filtro de búsqueda
     if (state.searchQuery) {
         const query = state.searchQuery.toLowerCase();
+        // Busca ingredientes
         filteredProducts = filteredProducts.filter(p => 
             p.name.toLowerCase().includes(query)
         );
@@ -333,8 +331,10 @@ function renderProducts() {
     
     // Mostrar estado vacío si no hay ingredientes
     if (state.products.length === 0) {
+        // Vacia container en donde se mostrarìa lista de productos
         container.innerHTML = '';
-        emptyState.classList.remove('hidden');
+        // Remueve la clase hidden, para que se muestre este contenido sino hay ingredientes
+        emptyState.classList.remove('hidden'); 
         return;
     }
     
