@@ -174,7 +174,6 @@ function addProduct(productData) {
         category: productData.category,
         quantity: parseFloat(productData.quantity) || 0,
         unit: productData.unit,
-        minimumStock: parseFloat(productData.minimumStock) || 5,
         createdAt: Date.now(),
         updatedAt: Date.now()
     };
@@ -182,6 +181,7 @@ function addProduct(productData) {
     state.products.push(product);
     saveProducts();
     renderProducts();
+    renderMovements();
     showToast(`Ingrediente "${product.name}" agregado correctamente`);
 }
 
@@ -198,7 +198,6 @@ function updateProduct(id, productData) {
         category: productData.category,
         quantity: parseFloat(productData.quantity) || 0,
         unit: productData.unit,
-        minimumStock: parseFloat(productData.minimumStock) || 5,
         updatedAt: Date.now()
     };
     
@@ -229,17 +228,13 @@ function deleteProduct(id) {
  * Bajo: stock está cerca del mínimo (entre 80% y 100% del mínimo)
  * Crítico: stock < 80% del mínimo o stock = 0
  */
-function getStockStatus(quantity, minimumStock) {
+function getStockStatus(quantity) {
     if (quantity <= 0) {
-        return { status: 'out', label: 'Crítico' };
-    }
-    
-    const lowThreshold = minimumStock * 0.8;
-    
-    if (quantity < lowThreshold) {
-        return { status: 'out', label: 'Crítico' };
-    } else if (quantity <= minimumStock) {
-        return { status: 'low', label: 'Stock bajo' };
+        return { status: 'out', label: 'Sin stock' };
+    } else if (quantity <= 5) {
+        return { status: 'low', label: 'Bajo stock' };
+    } else if (quantity <= 20) {
+        return { status: 'medium', label: 'Stock medio' };
     } else {
         return { status: 'ok', label: 'Stock OK' };
     }
@@ -352,7 +347,7 @@ function renderProducts() {
     }
     
     container.innerHTML = filteredProducts.map(product => {
-        const stockStatus = getStockStatus(product.quantity, product.minimumStock);
+        const stockStatus = getStockStatus(product.quantity);
         const categoryLabel = CATEGORIES[product.category] || product.category;
         
         return `
@@ -459,11 +454,9 @@ function openProductModal(product = null) {
         document.getElementById('product-category').value = product.category;
         document.getElementById('product-quantity').value = product.quantity;
         document.getElementById('product-unit').value = product.unit;
-        document.getElementById('product-minimum').value = product.minimumStock || 5;
     } else {
         // Modo agregar
         title.textContent = 'Agregar Ingrediente';
-        document.getElementById('product-minimum').value = 5;
     }
     
     modal.classList.remove('hidden');
@@ -552,11 +545,10 @@ function initEventListeners() {
         e.preventDefault();
         
         const productData = {
-            name: document.getElementById('product-name').value,
-            category: document.getElementById('product-category').value,
-            quantity: document.getElementById('product-quantity').value,
-            unit: document.getElementById('product-unit').value,
-            minimumStock: document.getElementById('product-minimum').value
+        name: document.getElementById('product-name').value,
+        category: document.getElementById('product-category').value,
+        quantity: document.getElementById('product-quantity').value,
+        unit: document.getElementById('product-unit').value
         };
         
         // Validaciones
@@ -570,11 +562,6 @@ function initEventListeners() {
             return;
         }
 
-        if (!productData.minimumStock || productData.minimumStock < 0) {
-            showToast('El stock mínimo debe ser válido', 'error');
-            return;
-        }
-        
         const productId = document.getElementById('product-id').value;
         
         if (productId) {
