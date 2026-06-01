@@ -1,4 +1,4 @@
-/**
+﻿/**
  * ========================================
  * PRODUCTS - Gestión de Ingredientes
  * ========================================
@@ -6,7 +6,6 @@
  */
 
 import { saveProducts } from './storage.js';
-import { showToast } from './ui.js';
 
 // ========================================
 // CATEGORÍAS
@@ -39,9 +38,8 @@ function generateId() {
  * Agrega un nuevo ingrediente
  * @param {Object} productData - Datos del producto
  * @param {Array} products - Array de productos del state
- * @param {Function} renderFn - Función para renderizar
  */
-function addProduct(productData, products, renderFn) {
+function addProduct(productData, products) {
     const product = {
         id: generateId(),
         name: productData.name.trim(),
@@ -51,11 +49,10 @@ function addProduct(productData, products, renderFn) {
         createdAt: Date.now(),
         updatedAt: Date.now()
     };
-    
+
     products.push(product);
     saveProducts(products);
-    renderFn();
-    showToast(`Ingrediente "${product.name}" agregado correctamente`);
+    return product;
 }
 
 // ========================================
@@ -67,13 +64,12 @@ function addProduct(productData, products, renderFn) {
  * @param {string} id - ID del producto
  * @param {Object} productData - Nuevos datos del producto
  * @param {Array} products - Array de productos del state
- * @param {Function} renderFn - Función para renderizar
  * @returns {boolean}
  */
-function updateProduct(id, productData, products, renderFn) {
+function updateProduct(id, productData, products) {
     const index = products.findIndex(p => p.id === id);
     if (index === -1) return false;
-    
+
     products[index] = {
         ...products[index],
         name: productData.name.trim(),
@@ -82,10 +78,8 @@ function updateProduct(id, productData, products, renderFn) {
         unit: productData.unit,
         updatedAt: Date.now()
     };
-    
+
     saveProducts(products);
-    renderFn();
-    showToast('Ingrediente actualizado correctamente');
     return true;
 }
 
@@ -97,18 +91,15 @@ function updateProduct(id, productData, products, renderFn) {
  * Elimina un ingrediente
  * @param {string} id - ID del producto
  * @param {Array} products - Array de productos del state
- * @param {Function} renderFn - Función para renderizar
+ * @returns {boolean}
  */
-function deleteProduct(id, products, renderFn) {
-    const product = products.find(p => p.id === id);
-    if (!product) return;
-    
-    if (confirm(`¿Eliminar "${product.name}" del inventario?`)) {
-        products = products.filter(p => p.id !== id);
-        saveProducts(products);
-        renderFn();
-        showToast('Ingrediente eliminado');
-    }
+function deleteProduct(id, products) {
+    const index = products.findIndex(p => p.id === id);
+    if (index === -1) return false;
+
+    products.splice(index, 1);
+    saveProducts(products);
+    return true;
 }
 
 // ========================================

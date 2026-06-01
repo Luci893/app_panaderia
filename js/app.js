@@ -1,35 +1,169 @@
-/**
+﻿/**
  * ========================================
- * EVENTS - Event Listeners
+ * APP - Inicialización de la Aplicación
  * ========================================
- * Configura todos los event listeners de la aplicación
+ * Punto de entrada principal de la aplicación modularizada
  */
 
-import { saveSettings } from './storage.js';
-import { addProduct, updateProduct, deleteProduct, getProductById } from './products.js';
-import { registerMovement, clearHistory } from './movements.js';
-import { 
-    openProductModal, 
-    closeProductModal, 
-    openMovementModal, 
-    closeMovementModal, 
-    switchView,
-    showToast,
+import { initializeApp } from './firebaseConfig.js';
+import { loadData, saveProducts, saveMovements, saveSettings, DEFAULT_SETTINGS } from './storage.js';
+import { addProduct, updateProduct, deleteProduct as deleteProductLogic, getProductById } from './products.js';
+import {
     renderProducts,
     renderMovements,
-    updateSettingsInputs
+    updateSettingsInputs,
+    openProductModal,
+    closeProductModal,
+    openMovementModal,
+    closeMovementModal,
+    switchView,
+    showToast
 } from './ui.js';
 
 // ========================================
-// INICIALIZAR EVENT LISTENERS
+// ESTADO DE LA APLICACIÓN
+// ========================================
+
+const state = {
+    products: [],
+    movements: [],
+    settings: { ...DEFAULT_SETTINGS },
+    currentView: 'stock',
+    searchQuery: '',
+    filterCategory: 'all',
+    filterMovementType: 'all'
+};
+
+// ========================================
+// INICIALIZAR APLICACIÓN
 // ========================================
 
 /**
- * Inicializa todos los event listeners
- * @param {Object} state - Estado de la aplicación
+ * Inicializa la aplicación
  */
+async function initApp() {
+    console.log('🧂 Panadería Ingredientes - Iniciando...');
+
+    try {
+        await initializeApp();
+
+        const data = await loadData();
+
+        state.products = data.products || [];
+        state.movements = data.movements || [];
+        state.settings = data.settings || { ...DEFAULT_SETTINGS };
+
+        updateSettingsInputs(state.settings);
+
+        initEventListeners(state);
+        setupGlobalFunctions();
+
+        renderProducts(state.products, state.searchQuery, state.filterCategory);
+        renderMovements(state.movements, state.filterMovementType);
+
+        console.log('✅ Aplicación lista');
+    } catch (error) {
+        console.error('❌ Error al inicializar la aplicación:', error);
+    }
+}
+
+const btnMenu = document.getElementById('btn-menu');
+const bottomNav = document.querySelector('.bottom-nav');
+
+if (btnMenu && bottomNav) {
+    btnMenu.addEventListener('click', () => {
+        bottomNav.classList.toggle('show');
+    });
+}
+
+// ========================================
+// FUNCIONES GLOBALES (para onclick en HTML)
+// ========================================
+
+function setupGlobalFunctions() {
+    window.editProduct = function(id) {
+        const product = getProductById(id, state.products);
+        if (product) {
+            openProductModal(product);
+        }
+    };
+
+    window.deleteProduct = function(id) {
+        const product = getProductById(id, state.products);
+        if (!product) return;
+
+        if (confirm(`¿Eliminar "${product.name}" del inventario?`)) {
+            const deleted = deleteProductLogic(id, state.products);
+            if (deleted) {
+                renderProducts(state.products, state.searchQuery, state.filterCategory);
+                showToast('Ingrediente eliminado');
+            }
+        }
+    };
+
+    window.openMovementModal = function(productId) {
+        openMovementModal(productId, state.products);
+    };
+}
+
+// ========================================
+// FUNCIONES GLOBALES DE APLICACIÓN
+// ========================================
+
+function registerMovement(productId, type, quantity, reason = '') {
+    const product = state.products.find(p => p.id === productId);
+    if (!product) return false;
+
+    if (type === 'egreso' && product.quantity < quantity) {
+        showToast(`Stock insuficiente. Disponible: ${product.quantity} ${product.unit}`, 'error');
+        return false;
+    }
+
+    if (type === 'ingreso') {
+        product.quantity += quantity;
+    } else {
+        product.quantity -= quantity;
+    }
+    product.updatedAt = Date.now();
+
+    const movement = {
+        id: `${Date.now().toString(36)}${Math.random().toString(36).substr(2)}`,
+        productId,
+        productName: product.name,
+        type,
+        quantity,
+        unit: product.unit,
+        reason: reason.trim(),
+        date: Date.now()
+    };
+
+    state.movements.unshift(movement);
+    saveProducts(state.products);
+    saveMovements(state.movements);
+
+    renderProducts(state.products, state.searchQuery, state.filterCategory);
+    renderMovements(state.movements, state.filterMovementType);
+
+    const typeLabel = type === 'ingreso' ? 'Ingreso' : 'Egreso';
+    showToast(`${typeLabel} registrado: ${quantity} ${product.unit}`);
+
+    return true;
+}
+
+function clearHistory() {
+    if (confirm('¿Limpiar todo el historial de movimientos?')) {
+        state.movements = [];
+        saveMovements(state.movements);
+        renderMovements(state.movements, state.filterMovementType);
+        showToast('Historial limpiado');
+    }
+}
+
+// ========================================
+// MANEJO DE EVENTOS
+// ========================================
+
 function initEventListeners(state) {
-    // Navegación entre vistas
     document.querySelectorAll('.nav-item').forEach(btn => {
         btn.addEventListener('click', () => {
             const view = btn.dataset.view;
@@ -37,45 +171,37 @@ function initEventListeners(state) {
             state.currentView = view;
         });
     });
-    
-    // Botón agregar producto
+
     const btnAddProduct = document.getElementById('btn-add-product');
     if (btnAddProduct) {
-        btnAddProduct.addEventListener('click', () => {
-            openProductModal();
-        });
+        btnAddProduct.addEventListener('click', () => openProductModal());
     }
-    
-    // Primer producto desde estado vacío
+
     const btnAddFirst = document.getElementById('btn-add-first');
     if (btnAddFirst) {
-        btnAddFirst.addEventListener('click', () => {
-            openProductModal();
-        });
+        btnAddFirst.addEventListener('click', () => openProductModal());
     }
-    
-    // Cerrar modales
+
     const btnCloseModal = document.getElementById('btn-close-modal');
     if (btnCloseModal) {
         btnCloseModal.addEventListener('click', closeProductModal);
     }
-    
+
     const btnCancel = document.getElementById('btn-cancel');
     if (btnCancel) {
         btnCancel.addEventListener('click', closeProductModal);
     }
-    
+
     const btnCloseMovement = document.getElementById('btn-close-movement');
     if (btnCloseMovement) {
         btnCloseMovement.addEventListener('click', closeMovementModal);
     }
-    
+
     const btnCancelMovement = document.getElementById('btn-cancel-movement');
     if (btnCancelMovement) {
         btnCancelMovement.addEventListener('click', closeMovementModal);
     }
-    
-    // Cerrar modal al hacer click fuera
+
     const modalProduct = document.getElementById('modal-product');
     if (modalProduct) {
         modalProduct.addEventListener('click', (e) => {
@@ -84,7 +210,7 @@ function initEventListeners(state) {
             }
         });
     }
-    
+
     const modalMovement = document.getElementById('modal-movement');
     if (modalMovement) {
         modalMovement.addEventListener('click', (e) => {
@@ -93,84 +219,76 @@ function initEventListeners(state) {
             }
         });
     }
-    
-    // Formulario de ingrediente
+
     const productForm = document.getElementById('product-form');
     if (productForm) {
         productForm.addEventListener('submit', (e) => {
             e.preventDefault();
-            
+
             const productData = {
                 name: document.getElementById('product-name').value,
                 category: document.getElementById('product-category').value,
                 quantity: document.getElementById('product-quantity').value,
                 unit: document.getElementById('product-unit').value
             };
-            
-            // Validaciones
+
             if (!productData.name.trim()) {
                 showToast('El nombre es obligatorio', 'error');
                 return;
             }
-            
+
             if (!productData.category) {
                 showToast('Selecciona una categoría', 'error');
                 return;
             }
 
             const productId = document.getElementById('product-id').value;
-            
+
             if (productId) {
-                updateProduct(productId, productData, state.products, () => {
+                const updated = updateProduct(productId, productData, state.products);
+                if (updated) {
                     renderProducts(state.products, state.searchQuery, state.filterCategory);
-                });
+                    showToast('Ingrediente actualizado correctamente');
+                }
             } else {
-                addProduct(productData, state.products, () => {
+                const product = addProduct(productData, state.products);
+                if (product) {
                     renderProducts(state.products, state.searchQuery, state.filterCategory);
-                });
+                    showToast(`Ingrediente "${product.name}" agregado correctamente`);
+                }
             }
-            
+
             closeProductModal();
         });
     }
-    
-    // Formulario de movimiento
+
     const movementForm = document.getElementById('movement-form');
     if (movementForm) {
         movementForm.addEventListener('submit', (e) => {
             e.preventDefault();
-            
+
             const productId = document.getElementById('movement-product-id').value;
             const type = document.getElementById('movement-type').value;
             const quantity = parseFloat(document.getElementById('movement-quantity').value);
             const reason = document.getElementById('movement-reason').value;
-            
-            // Validaciones
+
             if (!type) {
                 showToast('Selecciona el tipo de movimiento', 'error');
                 return;
             }
-            
+
             if (!quantity || quantity <= 0) {
                 showToast('Ingresa una cantidad válida', 'error');
                 return;
             }
-            
-            registerMovement(
-                productId, 
-                type, 
-                quantity, 
-                reason, 
-                state.products, 
-                state.movements,
-                () => renderProducts(state.products, state.searchQuery, state.filterCategory),
-                () => renderMovements(state.movements, state.filterMovementType)
-            );
-            closeMovementModal();
+
+            const registered = registerMovement(productId, type, quantity, reason);
+            if (registered) {
+                closeMovementModal();
+            }
         });
     }
-    
-    // Buscador
+
     const searchInput = document.getElementById('search-input');
     if (searchInput) {
         searchInput.addEventListener('input', (e) => {
@@ -178,8 +296,7 @@ function initEventListeners(state) {
             renderProducts(state.products, state.searchQuery, state.filterCategory);
         });
     }
-    
-    // Filtro de categoría
+
     const filterCategory = document.getElementById('filter-category');
     if (filterCategory) {
         filterCategory.addEventListener('change', (e) => {
@@ -187,8 +304,7 @@ function initEventListeners(state) {
             renderProducts(state.products, state.searchQuery, state.filterCategory);
         });
     }
-    
-    // Filtro de movimientos
+
     const filterMovementType = document.getElementById('filter-movement-type');
     if (filterMovementType) {
         filterMovementType.addEventListener('change', (e) => {
@@ -196,18 +312,12 @@ function initEventListeners(state) {
             renderMovements(state.movements, state.filterMovementType);
         });
     }
-    
-    // Limpiar historial
+
     const btnClearHistory = document.getElementById('btn-clear-history');
     if (btnClearHistory) {
-        btnClearHistory.addEventListener('click', () => {
-            clearHistory(state.movements, () => {
-                renderMovements(state.movements, state.filterMovementType);
-            });
-        });
+        btnClearHistory.addEventListener('click', clearHistory);
     }
-    
-    // Ajustes - Umbrales
+
     const thresholdLow = document.getElementById('threshold-low');
     if (thresholdLow) {
         thresholdLow.addEventListener('change', (e) => {
@@ -216,7 +326,7 @@ function initEventListeners(state) {
             renderProducts(state.products, state.searchQuery, state.filterCategory);
         });
     }
-    
+
     const thresholdCritical = document.getElementById('threshold-critical');
     if (thresholdCritical) {
         thresholdCritical.addEventListener('change', (e) => {
@@ -225,8 +335,7 @@ function initEventListeners(state) {
             renderProducts(state.products, state.searchQuery, state.filterCategory);
         });
     }
-    
-    // Exportar datos
+
     const btnExportData = document.getElementById('btn-export-data');
     if (btnExportData) {
         btnExportData.addEventListener('click', () => {
@@ -236,7 +345,7 @@ function initEventListeners(state) {
                 settings: state.settings,
                 exportDate: new Date().toISOString()
             };
-            
+
             const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
             const url = URL.createObjectURL(blob);
             const a = document.createElement('a');
@@ -244,57 +353,51 @@ function initEventListeners(state) {
             a.download = `panaderia_backup_${new Date().toISOString().split('T')[0]}.json`;
             a.click();
             URL.revokeObjectURL(url);
-            
+
             showToast('Datos exportados correctamente');
         });
     }
-    
-    // Importar datos
+
     const btnImportData = document.getElementById('btn-import-data');
     const fileImport = document.getElementById('file-import');
-    
-    if (btnImportData) {
-        btnImportData.addEventListener('click', () => {
-            fileImport.click();
-        });
-    }
-    
-    if (fileImport) {
+
+    if (btnImportData && fileImport) {
+        btnImportData.addEventListener('click', () => fileImport.click());
+
         fileImport.addEventListener('change', (e) => {
             const file = e.target.files[0];
             if (!file) return;
-            
+
             const reader = new FileReader();
             reader.onload = (event) => {
                 try {
                     const data = JSON.parse(event.target.result);
-                    
+
                     if (data.products) state.products = data.products;
                     if (data.movements) state.movements = data.movements;
-                    if (data.settings) state.settings = { ...state.settings, ...data.settings };
-                    
+                    if (data.settings) state.settings = { ...DEFAULT_SETTINGS, ...data.settings };
+
+                    saveProducts(state.products);
+                    saveMovements(state.movements);
                     saveSettings(state.settings);
-                    
-                    // Actualizar inputs
+
                     updateSettingsInputs(state.settings);
-                    
-                    // Renderizar
                     renderProducts(state.products, state.searchQuery, state.filterCategory);
                     renderMovements(state.movements, state.filterMovementType);
-                    
+
                     showToast('Datos importados correctamente');
                 } catch (error) {
                     showToast('Error al importar: archivo inválido', 'error');
                 }
             };
             reader.readAsText(file);
-            e.target.value = ''; // Resetear input
+            e.target.value = '';
         });
     }
 }
 
 // ========================================
-// EXPORTAR
+// INICIAR APLICACIÓN
 // ========================================
 
-export { initEventListeners };
+document.addEventListener('DOMContentLoaded', initApp);

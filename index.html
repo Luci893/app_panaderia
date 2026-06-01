@@ -16,11 +16,12 @@
         <!-- Header -->
         <header class="app-header">
             <h1>🧂 Panadería Ingredientes</h1>
+            
             <button id="btn-menu" class="btn-icon" aria-label="Menú">
                 <span></span>
                 <span></span>
                 <span></span>
-            </button>
+            </button> 
         </header>
 
         <!-- Navegación inferior (móvil) -->
@@ -165,6 +166,7 @@
                             <select id="product-unit" required>
                                 <option value="unidades">Unidades</option>
                                 <option value="kg">Kilogramos</option>
+                                <option value="gr">Gramos</option>
                             </select>
                         </div>
                     </div>
@@ -224,15 +226,8 @@
         <!-- TOAST: Mensajes de feedback -->
         <div id="toast-container" class="toast-container"></div>
     </div>
-
-    <!-- Firebase SDK (versión compat para mayor compatibilidad) -->
-    <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
-    <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-firestore-compat.js"></script>
     
-    <!-- App original -->
-    <script src="app_panaderia.js"></script>
+    <script type="module" src="js/app.js"></script>
     
-    <!-- Integración Firebase (agrega persistencia en la nube) -->
-    <script src="firebase-integration.js"></script>
 </body>
 </html>
