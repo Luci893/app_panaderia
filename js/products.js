@@ -30,6 +30,38 @@ function generateId() {
     return Date.now().toString(36) + Math.random().toString(36).substr(2);
 }
 
+// Función de Conversión
+function convertToGrams(quantity, unit) {
+    quantity = Number(quantity);
+
+    if (unit === "kg") {
+        return quantity * 1000;
+    }
+
+    if (unit === "gr") {
+        return quantity;
+    }
+
+    return quantity;
+}
+
+// Convierte una cantidad desde una unidad de origen a una unidad destino (solo gr/kg)
+function convertUnit(quantity, fromUnit, toUnit) {
+    quantity = Number(quantity);
+
+    if (fromUnit === toUnit) return quantity;
+
+    if (fromUnit === 'kg' && toUnit === 'gr') {
+        return quantity * 1000;
+    }
+
+    if (fromUnit === 'gr' && toUnit === 'kg') {
+        return quantity / 1000;
+    }
+
+    return quantity;
+}
+
 // ========================================
 // AGREGAR PRODUCTO
 // ========================================
@@ -109,18 +141,29 @@ function deleteProduct(id, products) {
 /**
  * Obtiene el estado del stock de un ingrediente
  * @param {number} quantity - Cantidad actual
- * @returns {Object}
- */
-function getStockStatus(quantity) {
-    if (quantity <= 0) {
+ * @returns {Object} */
+
+function getStockStatus(quantity, unit, settings) {
+
+    const grams = convertToGrams(quantity, unit);
+
+    // Umbrales configurables (vienen en kg, los pasamos a gramos)
+    const criticalGrams = (settings?.thresholdCritical ?? 5) * 1000;
+    const lowGrams = (settings?.thresholdLow ?? 10) * 1000;
+
+    if (grams <= 0) {
         return { status: 'out', label: 'Sin stock' };
-    } else if (quantity <= 5) {
-        return { status: 'low', label: 'Bajo stock' };
-    } else if (quantity <= 20) {
-        return { status: 'medium', label: 'Stock medio' };
-    } else {
-        return { status: 'ok', label: 'Stock OK' };
     }
+
+    if (grams <= criticalGrams) {
+        return { status: 'low', label: 'Stock crítico' };
+    }
+
+    if (grams <= lowGrams) {
+        return { status: 'medium', label: 'Bajo Stock' };
+    }
+
+    return { status: 'ok', label: 'Stock OK' };
 }
 
 // ========================================
@@ -148,5 +191,6 @@ export {
     updateProduct,
     deleteProduct,
     getStockStatus,
-    getProductById
+    getProductById,
+    convertUnit
 };

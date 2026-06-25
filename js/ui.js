@@ -65,16 +65,14 @@ function showToast(message, type = 'success') {
 /**
  * Renderiza la lista de ingredientes
  */
-function renderProducts(products, searchQuery, filterCategory) {
+function renderProducts(products, searchQuery, filterCategory, settings) {
     const container = document.getElementById('products-list');
     const emptyState = document.getElementById('empty-state');
     
     if (!container || !emptyState) return;
     
-    // Filtrar ingredientes
     let filteredProducts = [...products];
     
-    // Aplicar filtro de búsqueda
     if (searchQuery) {
         const query = searchQuery.toLowerCase();
         filteredProducts = filteredProducts.filter(p => 
@@ -82,14 +80,12 @@ function renderProducts(products, searchQuery, filterCategory) {
         );
     }
     
-    // Aplicar filtro de categoría
     if (filterCategory !== 'all') {
         filteredProducts = filteredProducts.filter(p => 
             p.category === filterCategory
         );
     }
     
-    // Mostrar estado vacío si no hay ingredientes
     if (products.length === 0) {
         container.innerHTML = '';
         emptyState.classList.remove('hidden');
@@ -98,14 +94,13 @@ function renderProducts(products, searchQuery, filterCategory) {
     
     emptyState.classList.add('hidden');
     
-    // Renderizar cada ingrediente
     if (filteredProducts.length === 0) {
         container.innerHTML = '<p style="text-align:center;color:var(--color-text-light);padding:20px;">No se encontraron ingredientes</p>';
         return;
     }
     
     container.innerHTML = filteredProducts.map(product => {
-        const stockStatus = getStockStatus(product.quantity);
+        const stockStatus = getStockStatus(product.quantity, product.unit, settings);
         const categoryLabel = CATEGORIES[product.category] || product.category;
         
         return `
@@ -245,6 +240,12 @@ function openMovementModal(productId, products) {
     document.getElementById('movement-product-id').value = productId;
     productNameDisplay.textContent = `${product.name} (Stock: ${product.quantity} ${product.unit})`;
     
+    // Preseleccionar la unidad del producto
+    const movementUnit = document.getElementById('movement-unit');
+    if (movementUnit) {
+        movementUnit.value = (product.unit === 'gr') ? 'gr' : 'kg';
+    }
+
     modal.classList.remove('hidden');
 }
 

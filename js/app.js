@@ -7,7 +7,7 @@
 
 import { initializeApp } from './firebaseConfig.js';
 import { loadData, saveProducts, saveMovements, saveSettings, DEFAULT_SETTINGS } from './storage.js';
-import { addProduct, updateProduct, deleteProduct as deleteProductLogic, getProductById } from './products.js';
+import { addProduct, updateProduct, deleteProduct as deleteProductLogic, getProductById, convertUnit } from './products.js';
 import {
     renderProducts,
     renderMovements,
@@ -58,7 +58,8 @@ async function initApp() {
         initEventListeners(state);
         setupGlobalFunctions();
 
-        renderProducts(state.products, state.searchQuery, state.filterCategory);
+        // En initApp()
+        renderProducts(state.products, state.searchQuery, state.filterCategory, state.settings);
         renderMovements(state.movements, state.filterMovementType);
 
         console.log('✅ Aplicación lista');
@@ -95,7 +96,7 @@ function setupGlobalFunctions() {
         if (confirm(`¿Eliminar "${product.name}" del inventario?`)) {
             const deleted = deleteProductLogic(id, state.products);
             if (deleted) {
-                renderProducts(state.products, state.searchQuery, state.filterCategory);
+                renderProducts(state.products, state.searchQuery, state.filterCategory, state.settings);
                 showToast('Ingrediente eliminado');
             }
         }
@@ -110,7 +111,7 @@ function setupGlobalFunctions() {
 // FUNCIONES GLOBALES DE APLICACIÓN
 // ========================================
 
-function registerMovement(productId, type, quantity, reason = '') {
+/*function registerMovement(productId, type, quantity, reason = '') {
     const product = state.products.find(p => p.id === productId);
     if (!product) return false;
 
@@ -119,12 +120,17 @@ function registerMovement(productId, type, quantity, reason = '') {
         return false;
     }
 
+    const movementQuantity = convertToUnit(
+        quantity,
+        product.unit
+    );
+
+
     if (type === 'ingreso') {
-        product.quantity += quantity;
+        product.quantity += movementQuantity;
     } else {
-        product.quantity -= quantity;
+        product.quantity -= movementQuantity;
     }
-    product.updatedAt = Date.now();
 
     const movement = {
         id: `${Date.now().toString(36)}${Math.random().toString(36).substr(2)}`,
@@ -148,6 +154,56 @@ function registerMovement(productId, type, quantity, reason = '') {
     showToast(`${typeLabel} registrado: ${quantity} ${product.unit}`);
 
     return true;
+}*/
+
+function registerMovement(productId, type, quantity, inputUnit, reason = '') {
+    const product = state.products.find(p => p.id === productId);
+    if (!product) return false;
+
+    // Convertimos la cantidad ingresada a la unidad del producto
+    const convertedQuantity = convertUnit(quantity, inputUnit, product.unit);
+
+    if (type === 'egreso' && product.quantity < quantity) {
+        showToast(`Stock insuficiente. Disponible: ${product.quantity} ${product.unit}`, 'error');
+        return false;
+    }
+
+    if (type === 'ingreso') {
+        product.quantity += quantity;
+    } else {
+        product.quantity -= quantity;
+    }
+
+    // Auto-conversión: si llega a 1000 gr o más, pasar a kg
+    if (product.unit === 'gr' && product.quantity >= 1000) {
+        product.quantity = product.quantity / 1000;
+        product.unit = 'kg';
+    }
+
+    product.updatedAt = Date.now();
+
+    const movement = {
+        id: `${Date.now().toString(36)}${Math.random().toString(36).substr(2)}`,
+        productId,
+        productName: product.name,
+        type,
+        quantity,
+        unit: inputUnit,
+        reason: reason.trim(),
+        date: Date.now()
+    };
+
+    state.movements.unshift(movement);
+    saveProducts(state.products);
+    saveMovements(state.movements);
+
+    renderProducts(state.products, state.searchQuery, state.filterCategory, state.settings);
+    renderMovements(state.movements, state.filterMovementType);
+
+    const typeLabel = type === 'ingreso' ? 'Ingreso' : 'Egreso';
+    showToast(`${typeLabel} registrado: ${quantity} ${inputUnit}`);
+
+    return true;
 }
 
 function clearHistory() {
@@ -164,6 +220,8 @@ function clearHistory() {
 // ========================================
 
 function initEventListeners(state) {
+    console.log("Función initEventListeners ejecutado");
+
     document.querySelectorAll('.nav-item').forEach(btn => {
         btn.addEventListener('click', () => {
             const view = btn.dataset.view;
@@ -174,12 +232,18 @@ function initEventListeners(state) {
 
     const btnAddProduct = document.getElementById('btn-add-product');
     if (btnAddProduct) {
-        btnAddProduct.addEventListener('click', () => openProductModal());
+        btnAddProduct.addEventListener('click', () => {
+            console.log("CLICK AGREGAR");
+            openProductModal();
+        });
     }
 
     const btnAddFirst = document.getElementById('btn-add-first');
     if (btnAddFirst) {
-        btnAddFirst.addEventListener('click', () => openProductModal());
+        btnAddFirst.addEventListener('click', () => {
+            console.log("CLICK AGREGAR");
+            openProductModal();
+        });
     }
 
     const btnCloseModal = document.getElementById('btn-close-modal');
@@ -247,13 +311,13 @@ function initEventListeners(state) {
             if (productId) {
                 const updated = updateProduct(productId, productData, state.products);
                 if (updated) {
-                    renderProducts(state.products, state.searchQuery, state.filterCategory);
+                    renderProducts(state.products, state.searchQuery, state.filterCategory, state.settings);
                     showToast('Ingrediente actualizado correctamente');
                 }
             } else {
                 const product = addProduct(productData, state.products);
                 if (product) {
-                    renderProducts(state.products, state.searchQuery, state.filterCategory);
+                    renderProducts(state.products, state.searchQuery, state.filterCategory, state.settings);
                     showToast(`Ingrediente "${product.name}" agregado correctamente`);
                 }
             }
@@ -270,6 +334,7 @@ function initEventListeners(state) {
             const productId = document.getElementById('movement-product-id').value;
             const type = document.getElementById('movement-type').value;
             const quantity = parseFloat(document.getElementById('movement-quantity').value);
+            const unit = document.getElementById('movement-unit').value;
             const reason = document.getElementById('movement-reason').value;
 
             if (!type) {
@@ -282,7 +347,7 @@ function initEventListeners(state) {
                 return;
             }
 
-            const registered = registerMovement(productId, type, quantity, reason);
+            const registered = registerMovement(productId, type, quantity, unit, reason);
             if (registered) {
                 closeMovementModal();
             }
@@ -293,7 +358,7 @@ function initEventListeners(state) {
     if (searchInput) {
         searchInput.addEventListener('input', (e) => {
             state.searchQuery = e.target.value;
-            renderProducts(state.products, state.searchQuery, state.filterCategory);
+            renderProducts(state.products, state.searchQuery, state.filterCategory, state.settings);
         });
     }
 
@@ -301,7 +366,7 @@ function initEventListeners(state) {
     if (filterCategory) {
         filterCategory.addEventListener('change', (e) => {
             state.filterCategory = e.target.value;
-            renderProducts(state.products, state.searchQuery, state.filterCategory);
+            renderProducts(state.products, state.searchQuery, state.filterCategory, state.settings);
         });
     }
 
@@ -323,7 +388,7 @@ function initEventListeners(state) {
         thresholdLow.addEventListener('change', (e) => {
             state.settings.thresholdLow = parseInt(e.target.value) || 10;
             saveSettings(state.settings);
-            renderProducts(state.products, state.searchQuery, state.filterCategory);
+            renderProducts(state.products, state.searchQuery, state.filterCategory, state.settings);
         });
     }
 
@@ -332,7 +397,7 @@ function initEventListeners(state) {
         thresholdCritical.addEventListener('change', (e) => {
             state.settings.thresholdCritical = parseInt(e.target.value) || 5;
             saveSettings(state.settings);
-            renderProducts(state.products, state.searchQuery, state.filterCategory);
+            renderProducts(state.products, state.searchQuery, state.filterCategory, state.settings);
         });
     }
 
@@ -382,7 +447,7 @@ function initEventListeners(state) {
                     saveSettings(state.settings);
 
                     updateSettingsInputs(state.settings);
-                    renderProducts(state.products, state.searchQuery, state.filterCategory);
+                    renderProducts(state.products, state.searchQuery, state.filterCategory, state.settings);
                     renderMovements(state.movements, state.filterMovementType);
 
                     showToast('Datos importados correctamente');
