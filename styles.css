@@ -92,7 +92,7 @@ body {
 /* --- Responsive: Solo teléfonos --- */
 @media (max-width: 767px) {
     .app-header {
-        padding-top: 40px;
+        padding-top: 45px;
     }
 }
 
