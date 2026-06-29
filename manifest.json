@@ -13,8 +13,8 @@
     "dir": "ltr",
     "icons": [
         {
-            "src": "icons/icon-2000.png",
-            "sizes": "2000x2000",
+            "src": "icons/icon-4500.png",
+            "sizes": "4500x4500",
             "type": "image/png",
             "purpose": "any"
         }
