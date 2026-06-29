@@ -89,6 +89,13 @@ body {
     box-shadow: var(--shadow-md);
 }
 
+/* --- Responsive: Solo teléfonos --- */
+@media (max-width: 767px) {
+    .app-header {
+        padding-top: 38px;
+    }
+}
+
 .app-header h1 {
     font-size: 1.55rem;
     font-weight: 600;
