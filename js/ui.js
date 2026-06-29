@@ -43,11 +43,13 @@ function showToast(message, type = 'success') {
     if (!container) return;
     
     const toast = document.createElement('div');
-    toast.className = `toast ${type}`;
+    toast.className = `app-toast ${type}`;
+
     toast.innerHTML = `
         <span class="toast-message">${message}</span>
         <button class="toast-close" onclick="this.parentElement.remove()">✕</button>
     `;
+
     container.appendChild(toast);
     
     // Auto eliminar después de 4 segundos
@@ -55,7 +57,7 @@ function showToast(message, type = 'success') {
         if (toast.parentElement) {
             toast.remove();
         }
-    }, 4000);
+    }, 5000);
 }
 
 // ========================================
@@ -238,7 +240,7 @@ function openMovementModal(productId, products) {
     // Resetear formulario
     form.reset();
     document.getElementById('movement-product-id').value = productId;
-    productNameDisplay.textContent = `${product.name} (Stock: ${product.quantity} ${product.unit})`;
+    productNameDisplay.textContent = `${product.name} (Stock: ${product.quantity.toFixed(2)} ${product.unit})`;
     
     // Preseleccionar la unidad del producto
     const movementUnit = document.getElementById('movement-unit');

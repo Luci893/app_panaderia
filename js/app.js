@@ -119,7 +119,10 @@ function registerMovement(productId, type, quantity, inputUnit, reason = '') {
     const convertedQuantity = convertUnit(quantity, inputUnit, product.unit);
 
     if (type === 'egreso' && product.quantity < convertedQuantity) {
-        showToast(`Stock insuficiente. Disponible: ${product.quantity} ${product.unit}`, 'error');
+        showToast(
+        `El Stock es insuficiente para egresar. Disponible: ${Number(product.quantity.toFixed(2))} ${product.unit}`,
+        'error'
+        );
         return false;
     }
 
@@ -128,6 +131,9 @@ function registerMovement(productId, type, quantity, inputUnit, reason = '') {
     } else {
         product.quantity -= convertedQuantity;
     }
+
+    // Redondear a 2 decimales para evitar errores de coma flotante
+    product.quantity = Math.round(product.quantity * 100) / 100;
 
     // Normalizar unidad (gr→kg si pasa de 1000, kg→gr si baja de 1)
     const normalized = normalizeUnit(product.quantity, product.unit);
