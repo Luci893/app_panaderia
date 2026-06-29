@@ -18,8 +18,7 @@ La app está pensada para que el dueño o encargado de una panadería pueda:
 ```
 APP_PANADERIA/
 ├── icons/
-│   ├── icon-192.png
-│   └── icon-512.png
+│   └── icon-4500.png
 ├── js/
 │   ├── app.js
 │   ├── firebaseConfig.js
