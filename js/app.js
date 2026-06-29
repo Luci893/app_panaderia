@@ -7,7 +7,7 @@
 
 import { initializeApp } from './firebaseConfig.js';
 import { loadData, saveProducts, saveMovements, saveSettings, DEFAULT_SETTINGS } from './storage.js';
-import { addProduct, updateProduct, deleteProduct as deleteProductLogic, getProductById, convertUnit } from './products.js';
+import { addProduct, updateProduct, deleteProduct as deleteProductLogic, getProductById, convertUnit, normalizeUnit } from './products.js';
 import {
     renderProducts,
     renderMovements,
@@ -111,51 +111,6 @@ function setupGlobalFunctions() {
 // FUNCIONES GLOBALES DE APLICACIÓN
 // ========================================
 
-/*function registerMovement(productId, type, quantity, reason = '') {
-    const product = state.products.find(p => p.id === productId);
-    if (!product) return false;
-
-    if (type === 'egreso' && product.quantity < quantity) {
-        showToast(`Stock insuficiente. Disponible: ${product.quantity} ${product.unit}`, 'error');
-        return false;
-    }
-
-    const movementQuantity = convertToUnit(
-        quantity,
-        product.unit
-    );
-
-
-    if (type === 'ingreso') {
-        product.quantity += movementQuantity;
-    } else {
-        product.quantity -= movementQuantity;
-    }
-
-    const movement = {
-        id: `${Date.now().toString(36)}${Math.random().toString(36).substr(2)}`,
-        productId,
-        productName: product.name,
-        type,
-        quantity,
-        unit: product.unit,
-        reason: reason.trim(),
-        date: Date.now()
-    };
-
-    state.movements.unshift(movement);
-    saveProducts(state.products);
-    saveMovements(state.movements);
-
-    renderProducts(state.products, state.searchQuery, state.filterCategory);
-    renderMovements(state.movements, state.filterMovementType);
-
-    const typeLabel = type === 'ingreso' ? 'Ingreso' : 'Egreso';
-    showToast(`${typeLabel} registrado: ${quantity} ${product.unit}`);
-
-    return true;
-}*/
-
 function registerMovement(productId, type, quantity, inputUnit, reason = '') {
     const product = state.products.find(p => p.id === productId);
     if (!product) return false;
@@ -163,22 +118,21 @@ function registerMovement(productId, type, quantity, inputUnit, reason = '') {
     // Convertimos la cantidad ingresada a la unidad del producto
     const convertedQuantity = convertUnit(quantity, inputUnit, product.unit);
 
-    if (type === 'egreso' && product.quantity < quantity) {
+    if (type === 'egreso' && product.quantity < convertedQuantity) {
         showToast(`Stock insuficiente. Disponible: ${product.quantity} ${product.unit}`, 'error');
         return false;
     }
 
     if (type === 'ingreso') {
-        product.quantity += quantity;
+        product.quantity += convertedQuantity;
     } else {
-        product.quantity -= quantity;
+        product.quantity -= convertedQuantity;
     }
 
-    // Auto-conversión: si llega a 1000 gr o más, pasar a kg
-    if (product.unit === 'gr' && product.quantity >= 1000) {
-        product.quantity = product.quantity / 1000;
-        product.unit = 'kg';
-    }
+    // Normalizar unidad (gr→kg si pasa de 1000, kg→gr si baja de 1)
+    const normalized = normalizeUnit(product.quantity, product.unit);
+    product.quantity = normalized.quantity;
+    product.unit = normalized.unit;
 
     product.updatedAt = Date.now();
 

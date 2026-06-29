@@ -30,6 +30,10 @@ function generateId() {
     return Date.now().toString(36) + Math.random().toString(36).substr(2);
 }
 
+// ========================================
+// CONVERSIONES
+// ========================================
+
 // Función de Conversión
 function convertToGrams(quantity, unit) {
     quantity = Number(quantity);
@@ -60,6 +64,22 @@ function convertUnit(quantity, fromUnit, toUnit) {
     }
 
     return quantity;
+}
+
+// Normaliza la cantidad/unidad de un producto para que siempre quede
+// expresado en el rango más legible (evita 0.05 kg o 1500 gr)
+function normalizeUnit(quantity, unit) {
+    quantity = Number(quantity);
+
+    if (unit === 'gr' && quantity >= 1000) {
+        return { quantity: quantity / 1000, unit: 'kg' };
+    }
+
+    if (unit === 'kg' && quantity > 0 && quantity < 1) {
+        return { quantity: quantity * 1000, unit: 'gr' };
+    }
+
+    return { quantity, unit };
 }
 
 // ========================================
@@ -192,5 +212,6 @@ export {
     deleteProduct,
     getStockStatus,
     getProductById,
-    convertUnit
+    convertUnit,
+    normalizeUnit
 };
